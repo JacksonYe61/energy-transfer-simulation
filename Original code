@@ -1,0 +1,79 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Define crystal parameters
+lattice_size = 9.455  # Size of the cubic lattice
+runtime = 1000  # Runtime in Monte Carlo steps
+num_simulations = 50000000  # Number of simulations
+
+# Initialize arrays to store the final positions and energy values
+final_positions = np.zeros((lattice_size, lattice_size, lattice_size))
+energy_values = np.zeros((lattice_size, lattice_size, lattice_size))
+
+# Initialize lists to store all data points
+all_migration_distances = []
+all_energies = []
+all_final_x_coordinates = []
+all_final_y_coordinates = []
+
+# Perform Monte Carlo simulations
+for _ in range(num_simulations):
+    current_position = np.array([0, 0, 0])
+    energy = 100  # Initial energy at (0, 0, 0)
+
+    for _ in range(runtime):
+        # Generate a random number between 0 and 1
+        rand_num = np.random.rand()
+
+        # Determine the migration direction based on the random number
+        if rand_num < 1/6:
+            direction = np.array([1, 0, 0])
+        elif rand_num < 2/6:
+            direction = np.array([-1, 0, 0])
+        elif rand_num < 3/6:
+            direction = np.array([0, 1, 0])
+        elif rand_num < 4/6:
+            direction = np.array([0, -1, 0])
+        elif rand_num < 5/6:
+            direction = np.array([0, 0, 1])
+        else:
+            direction = np.array([0, 0, -1])
+
+        # Move excitation to the new position (with periodic boundary conditions)
+        current_position = (current_position + direction) % lattice_size
+
+        # Update energy based on run length
+        run_length = np.linalg.norm(current_position)
+        energy = 100 * (1 / run_length**6)
+
+    # Record the final position and energy
+    final_positions[tuple(current_position)] += 1
+    energy_values[tuple(current_position)] += energy
+
+    # Record the migration distance, energy, and final coordinates for each simulation
+    all_migration_distances.append(run_length)
+    all_energies.append(energy)
+    all_final_x_coordinates.append(current_position[0])
+    all_final_y_coordinates.append(current_position[1])
+
+# Create a DataFrame from the lists of data points
+data = pd.DataFrame({"Migration Distance": all_migration_distances,
+                      "Energy": all_energies,
+                      "Final X Coordinate": all_final_x_coordinates,
+                      "Final Y Coordinate": all_final_y_coordinates})
+
+# Save the DataFrame to an Excel file
+data.to_excel("longer_bond_points.xlsx", index=False)
+
+# Calculate average energy values
+average_energy_values = energy_values / final_positions
+
+# Plot all data points
+plt.figure(figsize=(10, 6))
+plt.scatter(all_migration_distances, all_energies, s=1)
+plt.xlabel('Migration Distance')
+plt.ylabel('Energy')
+plt.title('Migration Distance vs. Energy')
+plt.grid(True)
+plt.show()
